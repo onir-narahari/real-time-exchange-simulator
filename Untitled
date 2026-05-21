@@ -1,0 +1,12 @@
+class Order:
+    def __init__(self, order_id, side, price, quantity):
+        self.order_id = order_id
+        self.side = side
+        self.price = price
+        self.quantity = quantity
+    
+order = Order(1, "buy", 100, 10)
+print(order.order_id)
+print(order.side)
+print(order.price)
+print(order.quantity)

@@ -1,0 +1,95 @@
+{
+  "generated_at": "2026-05-20T21:08:54Z",
+  "runs": [
+    {
+      "label": "100000_orders",
+      "config": {
+        "num_orders": 100000,
+        "runtime_sec": null,
+        "num_traders": 3,
+        "mm_every_n_orders": 5,
+        "trader_delay_sec": 0.0,
+        "random_seed": 42,
+        "base_price": 100.0,
+        "price_jitter": 1.0,
+        "mm_quote_size": 10
+      },
+      "runtime_sec": 162.587,
+      "trader_orders_executed": 100000,
+      "orders_submitted": 140000,
+      "trades_executed": 77978,
+      "total_volume": 806685,
+      "cancellations": 37584,
+      "events_generated": 653192,
+      "orders_per_sec": 861.08,
+      "trades_per_sec": 479.61,
+      "cancellations_per_sec": 231.16,
+      "events_per_sec": 4017.49,
+      "timing_buckets": [
+        {
+          "name": "submit_order",
+          "total_ns": 110905783108,
+          "sample_count": 140000
+        },
+        {
+          "name": "submit_validation",
+          "total_ns": 32064188,
+          "sample_count": 140000
+        },
+        {
+          "name": "submit_matching_loop",
+          "total_ns": 243299053,
+          "sample_count": 180023
+        },
+        {
+          "name": "submit_book_insert",
+          "total_ns": 62290733287,
+          "sample_count": 102045
+        },
+        {
+          "name": "submit_fill_processing",
+          "total_ns": 513711345,
+          "sample_count": 155956
+        },
+        {
+          "name": "submit_book_events",
+          "total_ns": 46698646563,
+          "sample_count": 77978
+        },
+        {
+          "name": "submit_cleanup",
+          "total_ns": 57144739,
+          "sample_count": 77978
+        },
+        {
+          "name": "cancel_order",
+          "total_ns": 22397399412,
+          "sample_count": 39998
+        },
+        {
+          "name": "mm_refresh",
+          "total_ns": 75706048182,
+          "sample_count": 20000
+        },
+        {
+          "name": "event_emit",
+          "total_ns": 648936332,
+          "sample_count": 653192
+        },
+        {
+          "name": "book_summary",
+          "total_ns": 6242458,
+          "sample_count": 1
+        }
+      ],
+      "latency": {
+        "samples": 100000,
+        "avg_ms": 0.8642226759600171,
+        "p50_ms": 0.7451249999963494,
+        "p95_ms": 2.2714756000127028,
+        "p99_ms": 3.5771304200066796,
+        "max_ms": 96.55604200000312
+      }
+    }
+  ]
+}

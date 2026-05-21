@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+.env.local
+
+# OS / editor
+.DS_Store
+*.log
+*.out
+
+# Build / frontend
+node_modules/
+dist/
+build/
+.vite/
+tmp/
+scratch/
+
+# Generated benchmark clutter at repo root
+benchmark_*.csv
+benchmark_*.json
+benchmark_results.csv
+benchmark_results.json
+
+# Curated final results (tracked)
+!results/
+!results/final/
+!results/final/*.csv
+!results/final/*.json
+!results/final/README.md
+!results/README.md
+
+# Old benchmark runs (local only)
+results/old/
