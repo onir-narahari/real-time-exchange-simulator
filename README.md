@@ -12,11 +12,11 @@ A trading-systems project that simulates a live limit order book exchange, gener
 ## Financial and Market-Making Features
 
 - **Limit order book simulation** with resting bids and asks, best bid/ask tracking, spread, and depth on both sides of the book.
+- **Price-time priority matching**: incoming buys execute against the lowest resting ask, incoming sells against the highest resting bid, FIFO within each price level. Partial fills reduce resting quantity in place; fully filled orders are unlinked immediately.
 - **Trade tape** with timestamped executions, aggressor side, price, quantity, and trade IDs.
 - **Fills and cancellations** with lifecycle events: `NEW_ORDER`, `ORDER_ADDED`, `TRADE_EXECUTED`, `ORDER_FILLED`, `ORDER_PARTIALLY_FILLED`, `ORDER_CANCELLED`, and `BOOK_UPDATED`.
-- **Simple market maker** that posts symmetric quotes at midpoint and refreshes every N trader orders.
-- **Inventory-aware market maker** that skews reservation price by inventory exposure, adjusts bid/ask sizes based on inventory ratio, and avoids quoting on the risky side when inventory nears limits.
-- **Position tracking**: inventory, cash, total PnL (`cash + inventory * fair_value`), max absolute inventory, and per-refresh replacement/skip counters.
+- **Inventory-aware market maker** that computes a reservation price skewed by inventory exposure (`reservation = fair_value - inventory * risk_factor`), adjusts bid/ask sizes by inventory ratio, enforces position limits, and uses requote thresholds (3 ticks, 3 size units, 50-refresh age, 80% risk buffer) to minimize cancel/repost churn.
+- **Position tracking**: inventory, cash, total PnL (`cash + inventory * fair_value`), max absolute inventory, quote refreshes, replacements, skips, and per-reason replacement counts.
 - **Market quality metrics**: total trades, total volume, cancellations, fill rate, and average spread, computed from lifecycle events.
 
 ## Technical Highlights
@@ -25,9 +25,8 @@ A trading-systems project that simulates a live limit order book exchange, gener
 - **O(1) cancel via node unlinking**: cancellation removes a `BookNode` from its doubly-linked price-level queue and pops it from `orders_by_id` without scanning the book. Empty price levels are cleaned up immediately.
 - **Eliminated full-book cancel scans, list removals, and index rebuilds** in the benchmark hot path. `BookInstrumentation` counters confirm zero `cancel_full_scans`, zero `index_rebuilds`, and zero `list_removals` across 100k-order runs.
 - **Best-price matching engine** that reads `best_ask_order()` / `best_bid_order()` directly from the top price level instead of flattening the entire book per match attempt.
-- **Async market simulation** with concurrent trader loops, market-maker refresh loop, metrics publishing loop, and a market clock, all coordinated via `asyncio`.
-- **Lock-protected exchange mutations**: an `asyncio.Lock` serializes all order book updates so matching and book state remain consistent under concurrent trader activity.
-- **FastAPI WebSocket feed** with per-client sessions, monotonic sequence numbers, periodic heartbeats, deduped book snapshots, batched trade delivery (capped at 50 per batch), and exponential-backoff reconnection on the client.
+- **Async concurrent simulation** with trader loops, market-maker refresh, metrics publishing, and a market clock running as `asyncio` tasks, with an `asyncio.Lock` serializing all exchange mutations for consistency.
+- **FastAPI WebSocket feed** with per-client sessions, monotonic sequence numbers, periodic heartbeats, deduped book snapshots, batched trade delivery (capped at 50 per batch), and exponential-backoff client reconnection.
 - **Benchmark runner** with nanosecond-resolution timing buckets (`perf_counter_ns`), per-operation breakdown (submit, match, insert, fill, cancel, MM refresh), and CSV/JSON export.
 - **Slow-path tracing** that records any operation exceeding 25ms with full book-state context (depth, levels, active orders, instrumentation counters, MM inventory) for post-run root-cause analysis.
 - **Bounded recent event history** using a `deque(maxlen=10000)` so memory and append cost stay constant regardless of run length.
@@ -83,43 +82,7 @@ Random Traders / Inventory-Aware Market Maker
              React Dashboard
 ```
 
-Traders and market makers generate continuous order flow into the exchange. The async simulation runs trader tasks, market-maker quote refreshes, and metrics publishing as concurrent `asyncio` tasks. All exchange mutations are serialized through an `asyncio.Lock` so the order book is updated one operation at a time. The order book stores resting liquidity organized by price level, with FIFO queues within each level. The matching engine executes incoming orders against the best available opposing price. The WebSocket server streams market snapshots, sequenced book updates, batched trades, session metrics, and heartbeats to connected React dashboard clients.
-
-## Matching Engine
-
-Incoming buy orders match against the lowest resting ask. Incoming sell orders match against the highest resting bid. Within a price level, orders are filled in FIFO order, preserving time priority. Partial fills reduce the resting order's quantity in place; fully filled orders are unlinked from the book. The matching engine reads directly from `best_ask_order()` / `best_bid_order()` on the price-level book, avoiding any full-book flattening in the matching hot path.
-
-## Inventory-Aware Market Maker
-
-The inventory-aware market maker provides two-sided liquidity while controlling position risk. On each refresh, it computes a reservation price that shifts away from fair value in proportion to current inventory, then places bid and ask quotes around that adjusted center.
-
-**Quote pricing:**
-
-```
-fair_value = mid_price
-inventory_skew = inventory * inventory_risk_factor
-reservation_price = fair_value - inventory_skew
-
-bid = reservation_price - spread / 2
-ask = reservation_price + spread / 2
-```
-
-**Size adjustment:**
-
-```
-inventory_ratio = inventory / max_inventory
-
-bid_size = base_size * (1 - inventory_ratio)
-ask_size = base_size * (1 + inventory_ratio)
-```
-
-**When inventory is positive (long):** the market maker owns too much. Quotes shift down. Bid size shrinks. Ask size grows. This encourages selling inventory and discourages buying more.
-
-**When inventory is negative (short):** the market maker needs to buy back. Quotes shift up. Bid size grows. Ask size shrinks. This encourages buying inventory and discourages selling more.
-
-**Requote thresholds** prevent unnecessary cancel/repost churn. A resting quote is kept if the desired price is within 3 ticks and the desired size is within 3 units of the current quote, unless the quote age exceeds 50 refreshes or inventory is near the risk limit (80% of max).
-
-**Tracked metrics:** inventory, cash, total PnL, max absolute inventory, quote refreshes, quote replacements, quote skips, quote-kept-due-to-threshold, and per-reason replacement counts (price, size, age, risk).
+Traders and market makers generate continuous order flow. The async simulation runs concurrent trader, market-maker, and metrics tasks coordinated by `asyncio`, with an `asyncio.Lock` serializing all exchange mutations. The order book stores resting liquidity by price level with FIFO queues. The matching engine executes against the best opposing price. The WebSocket server streams snapshots, sequenced book updates, batched trades, metrics, and heartbeats to dashboard clients.
 
 ## Benchmarks
 
@@ -146,10 +109,6 @@ Slow-path tracing showed that max-latency spikes were caused by `mm_refresh` tri
 | Inventory MM | ~23.3s | ~79,788 | ~27,809 | -2 | 16 | +$5,547 | Inventory-controlled; fewer cancels; bounded event overhead |
 
 Final inventory of -2 means the market maker ended nearly flat. Max absolute inventory of 16 shows inventory risk stayed bounded throughout the 100k-order run.
-
-## Concurrency Model
-
-The simulator separates concurrent market activity from deterministic exchange mutation. Trader tasks, market-maker refresh loops, and metrics publishing run concurrently as `asyncio` tasks, while the exchange engine is protected by an `asyncio.Lock` so order book updates happen one at a time. The WebSocket server runs per-client broadcaster tasks for heartbeats (5s interval), metrics (1s), book snapshots (0.5s, deduped by book key), and batched trades (0.5s, capped at 50 per batch). Clients receive a monotonic sequence number on every message and reconnect with exponential backoff.
 
 ## Quick Start
 
