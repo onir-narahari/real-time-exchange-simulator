@@ -1,7 +1,5 @@
 # Real-Time Exchange Simulator
 
-A trading-systems project that simulates a live limit order book exchange, generates random trader and market-maker order flow, matches orders using price-time priority, streams market data over WebSockets, and benchmarks latency, throughput, inventory risk, and market-maker PnL. The system brings together market microstructure, systems engineering, async concurrency, and benchmark-driven performance profiling in a single codebase.
-
 ## What It Does
 
 - Simulates an electronic exchange where traders and market makers submit buy and sell orders into a limit order book, producing a continuous stream of bids, asks, trades, fills, and cancellations.
@@ -21,16 +19,25 @@ A trading-systems project that simulates a live limit order book exchange, gener
 
 ## Technical Highlights
 
-- **Price-level order book** with FIFO doubly-linked queues per price level, sorted bid/ask price arrays via `bisect.insort`, and an `orders_by_id` hash map for O(1) order lookup.
-- **O(1) cancel via node unlinking**: cancellation removes a `BookNode` from its doubly-linked price-level queue and pops it from `orders_by_id` without scanning the book. Empty price levels are cleaned up immediately.
-- **Eliminated full-book cancel scans, list removals, and index rebuilds** in the benchmark hot path. `BookInstrumentation` counters confirm zero `cancel_full_scans`, zero `index_rebuilds`, and zero `list_removals` across 100k-order runs.
-- **Best-price matching engine** that reads `best_ask_order()` / `best_bid_order()` directly from the top price level instead of flattening the entire book per match attempt.
-- **Async concurrent simulation** with trader loops, market-maker refresh, metrics publishing, and a market clock running as `asyncio` tasks, with an `asyncio.Lock` serializing all exchange mutations for consistency.
-- **FastAPI WebSocket feed** with per-client sessions, monotonic sequence numbers, periodic heartbeats, deduped book snapshots, batched trade delivery (capped at 50 per batch), and exponential-backoff client reconnection.
-- **Benchmark runner** with nanosecond-resolution timing buckets (`perf_counter_ns`), per-operation breakdown (submit, match, insert, fill, cancel, MM refresh), and CSV/JSON export.
-- **Slow-path tracing** that records any operation exceeding 25ms with full book-state context (depth, levels, active orders, instrumentation counters, MM inventory) for post-run root-cause analysis.
-- **Bounded recent event history** using a `deque(maxlen=10000)` so memory and append cost stay constant regardless of run length.
-- **Benchmark-mode `BOOK_UPDATED` suppression**: in benchmark mode, heavy `BOOK_UPDATED` payload construction and event storage are skipped while spread sampling and counters continue. Server/dashboard mode is unaffected.
+**Data Structures and Algorithmic Design**
+- **Doubly-linked FIFO queues per price level** using `BookNode` and `PriceLevel` classes with `__slots__` for low memory overhead. Each price level maintains its own head/tail pointers and aggregate quantity, so depth is tracked incrementally — never recomputed.
+- **O(1) order cancel via node unlinking**: cancellation pops a `BookNode` from its linked list and removes it from an `orders_by_id` hash map — no linear scan, no index rebuild. Empty price levels are garbage-collected immediately.
+- **Sorted price arrays via `bisect.insort`** for O(log n) price-level insertion and O(1) best-price access (`bid_prices[-1]`, `ask_prices[0]`).
+- **Best-price matching without book flattening**: the matching engine reads directly from the top price level (`best_ask_order()` / `best_bid_order()`) and walks only the levels it fills, avoiding any full-book iteration in the hot path.
+- **Bounded event history** using `deque(maxlen=10_000)` for constant-time appends and capped memory regardless of run length.
+
+**Concurrency and Async Architecture**
+- **Lock-serialized exchange mutations**: all order book updates go through a single `asyncio.Lock`, ensuring deterministic matching under concurrent trader, market-maker, and metrics tasks.
+- **Per-client WebSocket sessions** with independent broadcaster coroutines for heartbeats (5s), metrics (1s), deduped book snapshots (0.5s, sent only on state change via composite book key), and batched trades (0.5s, capped at 50 per batch).
+- **Monotonic sequence numbers** on every WebSocket message for gap detection, with exponential-backoff reconnection on the client.
+- **Graceful lifecycle management**: FastAPI lifespan context starts/stops the simulation, and each WebSocket session tracks its own `asyncio.Event` for clean shutdown and task cancellation.
+
+**Performance Profiling and Optimization**
+- **Nanosecond-resolution timing buckets** (`perf_counter_ns`) with per-operation breakdown across submit, match, insert, fill, cancel, MM refresh, and event emit — all exportable to CSV/JSON.
+- **Slow-path tracing** for any operation exceeding 25ms, capturing full book-state context (depth, price levels, active orders, MM inventory, instrumentation counters) for post-run latency root-cause analysis.
+- **Conditional event emission**: benchmark mode suppresses heavy `BOOK_UPDATED` payload construction while still sampling spread and counting events, separating engine hot-path measurement from serialization overhead. Server mode is unaffected.
+- **`BookInstrumentation` counters** verify zero cancel scans, zero index rebuilds, and zero list removals across 100k-order runs, confirming the data structure guarantees hold under load.
+- **~44x runtime reduction** (1,022s to 23s on 100k orders) through data structure redesign, bounded event storage, and conditional event emission — without changing matching semantics or trade outcomes.
 
 ## Tech Stack
 
