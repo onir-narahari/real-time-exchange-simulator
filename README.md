@@ -1,193 +1,304 @@
-# Real-Time Exchange Simulator
+# Limit Order Book & Matching Engine
 
-## What It Does
-
-- Simulates an electronic exchange where traders and market makers submit buy and sell orders into a limit order book, producing a continuous stream of bids, asks, trades, fills, and cancellations.
-- Matches orders using price-time priority at the best available price and produces trade executions, partial fills, order lifecycle events, spread, depth, and volume metrics.
-- Runs an inventory-aware market maker that shifts quote prices and sizes based on position risk, enforces inventory limits, and tracks cash, PnL, and maximum exposure throughout the session.
-- Streams live market data to a React dashboard over WebSockets and includes a benchmark suite for measuring throughput, p99/max latency, slow-path tracing, and market-quality analysis.
-
-## Financial and Market-Making Features
-
-- **Limit order book simulation** with resting bids and asks, best bid/ask tracking, spread, and depth on both sides of the book.
-- **Price-time priority matching**: incoming buys execute against the lowest resting ask, incoming sells against the highest resting bid, FIFO within each price level. Partial fills reduce resting quantity in place; fully filled orders are unlinked immediately.
-- **Trade tape** with timestamped executions, aggressor side, price, quantity, and trade IDs.
-- **Fills and cancellations** with lifecycle events: `NEW_ORDER`, `ORDER_ADDED`, `TRADE_EXECUTED`, `ORDER_FILLED`, `ORDER_PARTIALLY_FILLED`, `ORDER_CANCELLED`, and `BOOK_UPDATED`.
-- **Inventory-aware market maker** that computes a reservation price skewed by inventory exposure (`reservation = fair_value - inventory * risk_factor`), adjusts bid/ask sizes by inventory ratio, enforces position limits, and uses requote thresholds (3 ticks, 3 size units, 50-refresh age, 80% risk buffer) to minimize cancel/repost churn.
-- **Position tracking**: inventory, cash, total PnL (`cash + inventory * fair_value`), max absolute inventory, quote refreshes, replacements, skips, and per-reason replacement counts.
-- **Market quality metrics**: total trades, total volume, cancellations, fill rate, and average spread, computed from lifecycle events.
-
-## Technical Highlights
-
-**Data Structures and Algorithmic Design**
-- **Doubly-linked FIFO queues per price level** using `BookNode` and `PriceLevel` classes with `__slots__` for low memory overhead. Each price level maintains its own head/tail pointers and aggregate quantity, so depth is tracked incrementally — never recomputed.
-- **O(1) order cancel via node unlinking**: cancellation pops a `BookNode` from its linked list and removes it from an `orders_by_id` hash map — no linear scan, no index rebuild. Empty price levels are garbage-collected immediately.
-- **Sorted price arrays via `bisect.insort`** for O(log n) price-level insertion and O(1) best-price access (`bid_prices[-1]`, `ask_prices[0]`).
-- **Best-price matching without book flattening**: the matching engine reads directly from the top price level (`best_ask_order()` / `best_bid_order()`) and walks only the levels it fills, avoiding any full-book iteration in the hot path.
-- **Bounded event history** using `deque(maxlen=10_000)` for constant-time appends and capped memory regardless of run length.
-
-**Concurrency and Async Architecture**
-- **Lock-serialized exchange mutations**: all order book updates go through a single `asyncio.Lock`, ensuring deterministic matching under concurrent trader, market-maker, and metrics tasks.
-- **Per-client WebSocket sessions** with independent broadcaster coroutines for heartbeats (5s), metrics (1s), deduped book snapshots (0.5s, sent only on state change via composite book key), and batched trades (0.5s, capped at 50 per batch).
-- **Monotonic sequence numbers** on every WebSocket message for gap detection, with exponential-backoff reconnection on the client.
-- **Graceful lifecycle management**: FastAPI lifespan context starts/stops the simulation, and each WebSocket session tracks its own `asyncio.Event` for clean shutdown and task cancellation.
-
-**Performance Profiling and Optimization**
-- **Nanosecond-resolution timing buckets** (`perf_counter_ns`) with per-operation breakdown across submit, match, insert, fill, cancel, MM refresh, and event emit — all exportable to CSV/JSON.
-- **Slow-path tracing** for any operation exceeding 25ms, capturing full book-state context (depth, price levels, active orders, MM inventory, instrumentation counters) for post-run latency root-cause analysis.
-- **Conditional event emission**: benchmark mode suppresses heavy `BOOK_UPDATED` payload construction while still sampling spread and counting events, separating engine hot-path measurement from serialization overhead. Server mode is unaffected.
-- **`BookInstrumentation` counters** verify zero cancel scans, zero index rebuilds, and zero list removals across 100k-order runs, confirming the data structure guarantees hold under load.
-- **~44x runtime reduction** (1,022s to 23s on 100k orders) through data structure redesign, bounded event storage, and conditional event emission — without changing matching semantics or trade outcomes.
-
-## Tech Stack
-
-| Area | Tools |
-|------|-------|
-| Backend | Python 3, FastAPI, WebSockets, `asyncio` |
-| Concurrency | `asyncio.Lock`-protected exchange, concurrent trader/MM/metrics tasks |
-| Frontend | React 19, TypeScript, Recharts, Vite |
-| Simulation | Limit order book, matching engine, random traders, simple and inventory-aware market makers |
-| Performance | `perf_counter_ns` timing buckets, slow-path tracing, p50/p95/p99/max latency, `BookInstrumentation` counters |
-| Data output | CSV/JSON benchmark exports, curated results in `results/final/` |
-
-## Project Structure
-
-| Path | Purpose |
-|------|---------|
-| `exchange.py` | Exchange engine: order submission, matching orchestration, lifecycle events, bounded event history |
-| `order_book.py` | Price-level order book with FIFO queues, O(1) cancel, depth tracking, health validation |
-| `matching_engine.py` | Best-price matching: incoming orders execute against the top opposing price level |
-| `RandomTraders.py` | Simple MM, inventory-aware MM, random traders, and `create_market_maker` factory |
-| `async_sim.py` | Async simulation loop: concurrent traders, MM refresh, metrics publishing, market clock |
-| `server.py` | FastAPI server with `/health` endpoint and `/ws/market` WebSocket feed |
-| `benchmark.py` | Throughput/latency benchmark runner with timing buckets, slow-path tracing, and MM metrics reporting |
-| `timing.py` | Nanosecond timing collector and bucket breakdown printer |
-| `slow_path.py` | Benchmark-only slow-operation logger with book-state snapshots |
-| `sim_config.py` | Benchmark vs. server mode toggles (event storage, `BOOK_UPDATED` suppression) |
-| `metrics.py` | Simulation metrics: trades, volume, cancellations, fill rate, average spread |
-| `dashboard/` | React + TypeScript dashboard: top-of-book, price chart, trade tape, session metrics, status bar |
-| `results/final/` | Curated 100k benchmark outputs (simple MM and inventory MM) |
-| `scripts/` | `run_final_benchmarks.sh` and `clean_benchmarks.sh` |
-
-## Architecture
+A limit order book and price-time-priority matching engine in Python, with a
+benchmark harness and a regression-analysis tool built around it.
 
 ```
-Random Traders / Inventory-Aware Market Maker
-                    |
-            Async Simulation Loop
-                    |
-        Lock-Protected Exchange Engine
-                    |
-        Price-Level Limit Order Book
-                    |
-          Best-Price Matching Engine
-                    |
-    Events / Metrics / Slow-Path Tracing
-                    |
-          FastAPI WebSocket Feed
-                    |
-             React Dashboard
+Order  ->  OrderBook  ->  MatchingEngine  ->  Trade
 ```
 
-Traders and market makers generate continuous order flow. The async simulation runs concurrent trader, market-maker, and metrics tasks coordinated by `asyncio`, with an `asyncio.Lock` serializing all exchange mutations. The order book stores resting liquidity by price level with FIFO queues. The matching engine executes against the best opposing price. The WebSocket server streams snapshots, sequenced book updates, batched trades, metrics, and heartbeats to dashboard clients.
+That pipeline is the whole project. Strategies, PnL, transport, and dashboards
+live outside it, in `sim/`, and the engine has no knowledge of any of them.
+
+```
+orderbook/    the engine — no dependencies, no I/O
+tests/        unit tests plus a differential suite
+reference/    a naive engine used as an answer key, and the comparison harness
+benchmarks/   order-flow workloads and the measurement harness
+analysis/     summarize runs, diff against a baseline, flag regressions
+sim/          strategies, session, WebSocket feed — downstream of the engine
+dashboard/    React live view
+```
+
+## Quick start
+
+The engine, tests, benchmarks, and analysis need only Python 3.9+ and `pytest`.
+
+```bash
+pip install pytest
+
+python -m pytest tests/ -q                                   # 96 tests
+python -m reference.differential                             # engine vs reference
+python -m benchmarks.benchmark --workload all --ops 100000   # performance
+python -m analysis.analyze results/baseline_100k.json        # read results
+```
+
+## The engine
+
+`orderbook/` has no third-party dependencies and no I/O.
+
+| File | Responsibility |
+|---|---|
+| `order.py` | `Order`, `Side`, `OrderType`, `OrderStatus`; construction-time validation |
+| `price_level.py` | `PriceLevel` — a FIFO queue of orders at one price, with incremental aggregates |
+| `order_book.py` | Price levels, top-of-book, L2 aggregation, O(1) cancel, invariant checking |
+| `matching_engine.py` | The sweep loop: turns an incoming order into trades |
+| `trade.py` | `Trade` — the engine's output record |
+
+### What it supports
+
+- **LIMIT** — sweeps every crossing level, rests the remainder.
+- **MARKET** — sweeps until filled or the book is dry; the remainder expires
+  rather than resting, since a market order has no price to rest at.
+- **CANCEL** — removes a resting order in O(1).
+- **Price-time priority** — best price first, FIFO within a price.
+- **L2 book** — aggregated `(price, quantity, order_count)` per level, best-first,
+  optionally depth-capped.
+- **Trades** — every trade prints at the *resting* order's price, so an
+  aggressive limit receives price improvement rather than paying its own limit.
+
+### Design
+
+**Two maps and two sorted arrays.** Each side keeps `{price: PriceLevel}` plus
+an ascending array of live prices, so the best bid is `bid_prices[-1]` and the
+best ask is `ask_prices[0]` — O(1) top-of-book, O(log n) insertion via `bisect`.
+
+**Intrusive linked lists.** A price level is a doubly-linked FIFO of `BookNode`s.
+`orders_by_id` maps an order id straight to its node, so a cancel unlinks in
+O(1) with no scan and no index rebuild. Empty levels are collected immediately.
+
+**Nothing is recomputed.** Level quantity, level order count, and per-side depth
+are maintained incrementally on every add, fill, and cancel. The book never
+flattens itself to answer a question — an L2 snapshot reads cached aggregates,
+and `l2(depth=5)` touches only five levels per side.
+
+**No instrumentation in the hot path.** The engine carries no timing hooks, no
+event emission, and no global mode flags. Measurement lives in `benchmarks/`
+and wraps calls from the outside, so the benchmark measures the code that ships.
+
+**Invariants are executable.** `OrderBook.validate()` walks the entire book and
+asserts every invariant — sorted and deduplicated price arrays, no empty levels,
+no non-positive resting quantities, aggregate caches matching a full walk, the
+index agreeing with the linked lists, and an uncrossed book. It is O(n) and used
+by tests and benchmarks, never by the hot path.
+
+## Correctness
+
+96 tests, no third-party fixtures beyond `pytest`.
+
+```bash
+python -m pytest tests/ -q
+```
+
+| File | Covers |
+|---|---|
+| `test_orders.py` | Order validation, adding orders, resting, sequence assignment, top-of-book, depth caches, L2 aggregation and depth capping, price-time iteration order |
+| `test_matching.py` | Matching, partial fills, price improvement, FIFO within a level, multi-level sweeps, sweeps stopping at the limit price, market-order semantics and expiry, empty-price-level collection, crossed and locked books, quantity conservation, determinism |
+| `test_cancellation.py` | Cancel at head/middle/tail, level collection and price reuse, depth and aggregate updates, cancelling filled or unknown orders, cancel after partial fill, 4,000-op churn ending in a provably empty book |
+| `test_differential.py` | The optimized engine against a naive reference over randomized flow |
+
+Three unit tests check properties rather than cases:
+
+- `test_quantity_is_conserved_under_random_flow` — over 2,000 random orders,
+  every share bought was sold, and submitted minus traded equals resting depth.
+- `test_book_survives_heavy_submit_cancel_churn` — after 4,000 mixed ops and
+  cancelling everything left, the book must be empty with zero depth, zero
+  levels, and `level_creates == level_removes`.
+- `test_repeated_crossing_flow_never_leaves_a_crossed_book` — aggressive flow
+  alternating sides, asserting the book is uncrossed after every single step.
+
+### Differential testing
+
+Unit tests check the cases I thought of. To cover the cases I did not, the
+engine is checked against a second, independent implementation.
+
+```
+                        SAME ORDERS
+                             |
+                    +--------+--------+
+                    v                 v
+                Reference          Optimized
+              naive_engine.py      orderbook/
+                    |                 |
+                    +--------+--------+
+                             v
+                          COMPARE
+```
+
+`reference/naive_engine.py` is deliberately the dumbest possible engine: the
+book is one flat Python list, finding the best price is a linear scan with
+`min`/`max`, cancelling is `list.remove`, and an L2 view is regrouped from
+scratch every call. Nothing is cached, so nothing can go stale. It expresses
+price-time priority directly as a sort key — `(-price, sequence)` for bids,
+`(price, sequence)` for asks — and is short enough to verify by reading it.
+
+It imports nothing from `orderbook/`. The two share no code, so the same bug
+would have to be written twice, independently, to slip through.
+
+`reference/differential.py` drives both engines through identical randomized
+flow and compares, **after every operation**:
+
+| Compared | Detail |
+|---|---|
+| Trades | id, price, quantity, aggressor side, aggressor id, resting id hit |
+| Incoming order | remaining quantity, whether it rested |
+| Book (L3) | every resting order, in price-time priority, both sides |
+| Book (L2) | `(price, quantity, order_count)` per level, both sides |
+| Top of book | best bid, best ask, per-side depth, resting count |
+
+Comparing per-operation rather than at the end means a divergence is reported
+at the operation that caused it, with both books printed and a one-line command
+to reproduce that exact seed.
+
+Five flow profiles stress different paths — `tight` (five prices, so constant
+FIFO ties and crossing), `wide`, `cancel_heavy`, `market_heavy`, and `sweeping`
+(orders large enough to eat many levels at once).
+
+```bash
+python -m reference.differential                          # default sweep
+python -m reference.differential --seeds 300 --ops 1500   # long sweep
+python -m reference.differential --profile tight --seeds 1 --seed-start 42
+```
+
+**Current status: 300 cases, 180,000 operations, 111,854 trades compared across
+all five profiles with no divergence.**
+
+### Proving the harness can fail
+
+A differential suite that passes because it never really looks at anything is
+worse than none. Seven known bugs were injected into the optimized engine to
+confirm each is caught:
+
+| Injected bug | Caught by |
+|---|---|
+| LIFO instead of FIFO within a price level | trade comparison |
+| Trades print at the aggressor's price, not the resting price | trade comparison |
+| Empty price levels never collected | crash on the next sweep |
+| `best_bid` returns the worst bid | book state: `best_bid` |
+| Depth cache drifts by one on every cancel | book state: `bid_depth` |
+| Market-order remainder rests instead of expiring | incoming order rested |
+| Resting fill off by one | trade comparison |
+
+Two of these are kept as permanent tests (`test_harness_detects_a_broken_engine`
+and `test_harness_detects_a_stale_depth_cache`), so the harness is re-proven
+capable of failing on every run.
+
+The depth-cache case is the one that shows why differential testing earns its
+keep here: `bid_depth` is an optimization the reference does not have at all.
+The reference has nothing to corrupt, so any drift in the optimized engine's
+cache shows up immediately as disagreement.
 
 ## Benchmarks
 
-The benchmark suite measures both systems performance and market behavior: runtime, throughput, p50/p95/p99/max latency, trades, volume, cancellations, fill rate, average spread, MM inventory, PnL, and slow-path events.
-
-### Performance Evolution (100k orders, seed 42, MM every 5)
-
-| Version | 100k Runtime | P99 Latency | Max Latency | Key Change |
-|---|--:|--:|--:|---|
-| Original baseline | ~1,022s | ~14.2ms | ~534ms | Flat matching + heavy event/book churn |
-| Best-level matching / Simple MM | ~162.6s | ~3.58ms | ~96.6ms | Direct best-price matching |
-| Inventory MM before event cleanup | ~164.5s | ~4.98ms | ~656ms | Inventory-aware quoting |
-| Inventory MM after event cleanup | ~23.3s | ~0.097ms | ~24.5ms | Bounded events + suppressed benchmark `BOOK_UPDATED` payloads |
-
-Slow-path tracing showed that max-latency spikes were caused by `mm_refresh` triggering nested `submit_book_insert` and `submit_book_events` operations on a deep book, not the matching loop itself. The fix bounded recent event history to a 10,000-entry deque and suppressed heavy `BOOK_UPDATED` payload construction in benchmark mode, separating engine hot-path measurement from event serialization overhead.
-
-> **Note:** Benchmark mode suppresses `BOOK_UPDATED` payload construction to measure the exchange engine hot path. All lifecycle and trade events are still counted. Server and dashboard mode continues to stream full market data through the WebSocket layer.
-
-### Market Maker Comparison (100k, seed 42)
-
-| MM Type | Runtime | Trades | Cancels | Final Inventory | Max Abs Inventory | PnL | Notes |
-|---|--:|--:|--:|--:|--:|--:|---|
-| Simple MM | ~162.6s | ~77,978 | ~37,584 | N/A | N/A | N/A | Optimized matching baseline |
-| Inventory MM | ~23.3s | ~79,788 | ~27,809 | -2 | 16 | +$5,547 | Inventory-controlled; fewer cancels; bounded event overhead |
-
-Final inventory of -2 means the market maker ended nearly flat. Max absolute inventory of 16 shows inventory risk stayed bounded throughout the 100k-order run.
-
-## Quick Start
-
-**Run a benchmark:**
-
 ```bash
-python benchmark.py --orders 10000 --seed 42 --mm-every 5 --mm-type inventory
+python -m benchmarks.benchmark --workload all --ops 100000 --seed 42
+python -m benchmarks.benchmark --workload cancel_heavy --ops 1000000 --json results/run.json
 ```
 
-**Regenerate curated final benchmarks:**
+`workloads.py` defines deterministic order-flow generators — pure functions of
+`(count, seed)` that emit ops with no view of matching outcomes, exactly like a
+real client. Cancels are issued against previously submitted ids, so some race a
+fill and miss; that miss rate is reported.
+
+| Workload | Shape |
+|---|---|
+| `balanced` | Symmetric two-sided limit flow; most orders rest, a minority cross |
+| `crossing` | Aggressive flow that mostly trades on arrival — stresses the sweep loop |
+| `cancel_heavy` | Post/pull/repost churn — the workload the O(1) cancel path exists for |
+| `deep_book` | Passive-only flow over a wide price grid; the book grows without bound |
+| `market_sweep` | Resting depth punctuated by market orders that eat several levels |
+
+Each operation is timed individually with `perf_counter_ns`. The harness reports
+throughput, mean/p50/p90/p99/p99.9/max per operation kind, final book shape,
+level churn, and captures book context for any op crossing a slow threshold.
+
+### Results
+
+100,000 operations per workload, seed 42, Python 3.9.11, Apple Silicon.
+Latencies in microseconds; full output in `results/baseline_100k.json`.
+
+| Workload | Throughput | Trades | submit p50 | submit p99 | cancel p50 | cancel p99 |
+|---|--:|--:|--:|--:|--:|--:|
+| `balanced` | 183,313 ops/s | 14,116 | 2.12 | 8.88 | — | — |
+| `cancel_heavy` | 256,036 ops/s | 0 | 2.50 | 3.33 | 1.38 | 1.83 |
+| `crossing` | 144,360 ops/s | 97,440 | 2.54 | 10.96 | — | — |
+| `deep_book` | 181,676 ops/s | 0 | 2.17 | 3.50 | — | — |
+| `market_sweep` | 139,039 ops/s | 94,876 | 2.50 | 29.62 | — | — |
+
+Two things these numbers show:
+
+**Cancel is cheaper than submit** (1.38us vs 2.50us at p50), and `cancel_heavy`
+is the *fastest* workload despite doing the most book mutation. That is the
+O(1) unlink paying off; a book that scans to cancel degrades here first.
+
+**`deep_book` holds its p99 at 3.50us with 100,000 resting orders across ~2,500
+levels per side** — insertion cost is flat in book depth, which is what the
+sorted-array-plus-map layout is for.
+
+### The latency tail is the garbage collector
+
+Max latency on `balanced` and `deep_book` reaches 12–27ms, far above p99.9. The
+slow-op capture shows these spikes correlate with resting-order count, not with
+level count or sweep length. Re-running with the cyclic collector disabled
+confirms it:
+
+| `deep_book`, 100k ops | p50 | p99 | max |
+|---|--:|--:|--:|
+| GC on | 2.08 | 4.38 | 12,778 |
+| GC off (`--no-gc`) | 2.08 | 3.38 | 945 |
+
+p50 is unchanged and max drops by 93%. The tail is CPython reclaiming a growing
+heap of `BookNode` objects, not a data-structure cost — so the fix would be GC
+tuning or node pooling, not a different book layout. `--no-gc` exists to make
+that separation reproducible rather than asserted.
+
+## Analysis
 
 ```bash
-bash scripts/run_final_benchmarks.sh
+python -m analysis.analyze results/baseline_100k.json
+python -m analysis.analyze results/new.json --baseline results/baseline_100k.json --fail-on-regression
 ```
 
-**Run the backend server:**
+Summarizes runs side by side, or diffs a run against a baseline per workload and
+flags anything more than 10% worse on throughput or latency. `--fail-on-regression`
+exits non-zero, so it drops into CI as-is.
+
+## Outside the core
+
+`sim/` is the simulation layer. It is deliberately downstream of the engine and
+nothing in `orderbook/` imports it.
+
+| File | Purpose |
+|---|---|
+| `exchange.py` | Session wrapper: order-id allocation, trade tape, metrics |
+| `market_maker.py` | Simple and inventory-aware market makers; quote skew, position limits, PnL |
+| `traders.py` | Random uninformed order flow |
+| `async_sim.py` | Concurrent trader/maker/metrics tasks behind an `asyncio.Lock` |
+| `server.py` | FastAPI `/health` and `/ws/market` — sequenced snapshots, batched trades, heartbeats |
+| `dashboard/` | React + TypeScript live view (top-of-book, price chart, trade tape, metrics) |
 
 ```bash
-uvicorn server:app --reload --host 127.0.0.1 --port 8000
+uvicorn sim.server:app --reload --port 8000    # backend
+cd dashboard && npm install && npm run dev     # frontend
+python -m sim.async_sim                        # headless session
 ```
 
-**Run the dashboard:**
+## Known limits
 
-```bash
-cd dashboard
-npm install
-npm run dev
-```
+Stated because they bound what the numbers above mean:
 
-**Run tests:**
+- **Prices are floats.** A production book would use integer ticks. Price
+  handling is centralized enough that this is a contained change, but it has
+  not been made.
+- **The simulated flow is uninformed.** `sim/traders.py` is uniform noise with
+  no drift, so a maker quoting into it faces essentially no adverse selection.
+  Maker PnL from a simulation run is therefore not a meaningful result — it is
+  a spread capture against a random walk that does not walk.
+- **Single-threaded.** The engine assumes one writer. The async layer enforces
+  that with a lock rather than the book being thread-safe.
+- **No self-trade prevention, no iceberg/stop/FOK orders, no time-in-force
+  beyond the implicit day/IOC split between limit and market.**
 
-```bash
-python -m pytest test_order_book.py -q
-```
+## License
 
-## Benchmark Outputs
-
-Final curated benchmark outputs live in `results/final/`. Raw benchmark outputs generated during local runs are gitignored at the repository root.
-
-To clean root benchmark clutter:
-
-```bash
-bash scripts/clean_benchmarks.sh
-```
-
-See `results/README.md` and `results/final/README.md` for regeneration instructions and file descriptions.
-
-## Skills Demonstrated
-
-**Trading Systems**
-- Limit order book design with price-level organization and FIFO time priority
-- Price-time priority matching engine
-- Bid/ask spread, depth, fills, cancellations, and trade tape
-- Market-maker inventory management, quote skew, and PnL tracking
-
-**Systems Engineering**
-- Async simulation with lock-protected shared state
-- WebSocket market data feed with sequencing, heartbeats, and batched delivery
-- Slow-path tracing for latency root-cause analysis
-- Benchmark-driven optimization from ~1,022s to ~23s on 100k orders
-- Bounded event storage and observability cleanup
-
-**Full-Stack**
-- FastAPI backend with health checks and WebSocket endpoints
-- React + TypeScript dashboard with live price chart, trade tape, top-of-book, and session metrics
-- CSV/JSON benchmark exports with curated and reproducible results
-- Shell scripts for benchmark regeneration and cleanup
-
-## Future Work
-
-- Historical market data replay for backtesting against recorded order flow
-- Volatility-aware spread widening during high-activity periods
-- Detailed backtest reporting with per-trade attribution
-- Additional order types (stop, iceberg, fill-or-kill)
-- Deployment packaging for hosted demo environments
+MIT

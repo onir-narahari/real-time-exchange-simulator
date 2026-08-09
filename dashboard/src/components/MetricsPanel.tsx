@@ -13,7 +13,7 @@ const ROWS: { key: keyof MetricsState; label: string; fmt?: 'pct' | 'spread' | '
   { key: 'orders_fully_filled', label: 'Fully filled', fmt: 'num' },
   { key: 'fill_rate_pct', label: 'Fill rate', fmt: 'pct' },
   { key: 'average_spread', label: 'Avg spread', fmt: 'spread' },
-  { key: 'event_count', label: 'Events', fmt: 'num' },
+  { key: 'resting_orders', label: 'Resting orders', fmt: 'num' },
 ];
 
 function formatMetric(value: number | null, fmt?: string): string {

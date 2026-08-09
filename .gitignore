@@ -1,6 +1,7 @@
 # Python
 __pycache__/
 *.pyc
+.pytest_cache/
 .venv/
 venv/
 .env
@@ -19,19 +20,7 @@ build/
 tmp/
 scratch/
 
-# Generated benchmark clutter at repo root
+# Ad-hoc benchmark output. Curated runs live in results/ and are tracked.
+results/scratch/
 benchmark_*.csv
 benchmark_*.json
-benchmark_results.csv
-benchmark_results.json
-
-# Curated final results (tracked)
-!results/
-!results/final/
-!results/final/*.csv
-!results/final/*.json
-!results/final/README.md
-!results/README.md
-
-# Old benchmark runs (local only)
-results/old/

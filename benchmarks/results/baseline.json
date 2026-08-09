@@ -1,0 +1,1000 @@
+{
+  "kind": "baseline",
+  "config": {
+    "workloads": [
+      "balanced",
+      "cancel_heavy",
+      "deep_book",
+      "aggressive",
+      "hot_price"
+    ],
+    "ops": 200000,
+    "seed": 42,
+    "repeats": 5,
+    "warmup": 2,
+    "percentiles": [
+      50.0,
+      95.0,
+      99.0,
+      99.9
+    ],
+    "gc_disabled": false
+  },
+  "environment": {
+    "python": "3.9.11",
+    "implementation": "CPython",
+    "platform": "macOS-15.5-arm64-arm-64bit",
+    "machine": "arm64",
+    "processor": "arm",
+    "git_revision": "03389c7-dirty",
+    "recorded_at": "2026-08-09T16:41:35-0500"
+  },
+  "runs": [
+    {
+      "workload": "balanced",
+      "description": "Symmetric two-sided limit flow. Most orders rest, a minority cross.",
+      "ops_requested": 200000,
+      "seed": 42,
+      "repeats": 5,
+      "warmup": 2,
+      "runtime_sec": 1.1028,
+      "throughput_ops_sec": 181364,
+      "throughput_min_ops_sec": 175595,
+      "throughput_max_ops_sec": 183436,
+      "throughput_spread_pct": 4.32,
+      "throughput_per_pass": [
+        176068,
+        181364,
+        183436,
+        175595,
+        182213
+      ],
+      "operations": {
+        "total": 200000,
+        "submits": 200000,
+        "market_orders": 0,
+        "orders_rested": 186004,
+        "cancel_attempts": 0,
+        "cancel_hits": 0,
+        "cancel_hit_rate_pct": null
+      },
+      "market": {
+        "trades": 28529,
+        "volume": 300158,
+        "notional": 30015688.62
+      },
+      "latency": {
+        "submit": {
+          "count": 1000000,
+          "total_ms": 2654.585,
+          "mean_us": 2.655,
+          "min_us": 1.916,
+          "max_us": 20197.542,
+          "p50_us": 2.125,
+          "p95_us": 4.584,
+          "p99_us": 8.167,
+          "p99_9_us": 34.667
+        },
+        "cancel": {
+          "count": 0
+        }
+      },
+      "final_book": {
+        "resting_orders": 170745,
+        "bid_levels": 96,
+        "ask_levels": 96,
+        "bid_depth": 1759083,
+        "ask_depth": 1747454,
+        "best_bid": 99.95,
+        "best_ask": 100.05,
+        "spread": 0.1
+      },
+      "level_churn": {
+        "levels_created": 9261,
+        "levels_removed": 9069
+      },
+      "slow_ops": [
+        {
+          "op_index": 97864,
+          "kind": "submit",
+          "elapsed_us": 754.333,
+          "resting_orders": 83679,
+          "bid_levels": 101,
+          "ask_levels": 96,
+          "bid_depth": 858896,
+          "ask_depth": 858233,
+          "best_bid": 100.02,
+          "best_ask": 100.05,
+          "spread": 0.03
+        },
+        {
+          "op_index": 163198,
+          "kind": "submit",
+          "elapsed_us": 19515.625,
+          "resting_orders": 139454,
+          "bid_levels": 99,
+          "ask_levels": 97,
+          "bid_depth": 1438784,
+          "ask_depth": 1426369,
+          "best_bid": 99.98,
+          "best_ask": 100.04,
+          "spread": 0.06
+        },
+        {
+          "op_index": 175563,
+          "kind": "submit",
+          "elapsed_us": 514.792,
+          "resting_orders": 149955,
+          "bid_levels": 97,
+          "ask_levels": 96,
+          "bid_depth": 1543452,
+          "ask_depth": 1535079,
+          "best_bid": 99.96,
+          "best_ask": 100.05,
+          "spread": 0.09
+        },
+        {
+          "op_index": 180198,
+          "kind": "submit",
+          "elapsed_us": 966.875,
+          "resting_orders": 153884,
+          "bid_levels": 98,
+          "ask_levels": 96,
+          "bid_depth": 1583245,
+          "ask_depth": 1575685,
+          "best_bid": 99.97,
+          "best_ask": 100.05,
+          "spread": 0.08
+        },
+        {
+          "op_index": 195879,
+          "kind": "submit",
+          "elapsed_us": 1243.542,
+          "resting_orders": 167240,
+          "bid_levels": 99,
+          "ask_levels": 97,
+          "bid_depth": 1721420,
+          "ask_depth": 1712517,
+          "best_bid": 99.99,
+          "best_ask": 100.01,
+          "spread": 0.02
+        }
+      ],
+      "slow_threshold_us": 500.0,
+      "gc_disabled": false
+    },
+    {
+      "workload": "cancel_heavy",
+      "description": "Quote-churn shaped flow: post, pull, repost.",
+      "ops_requested": 200000,
+      "seed": 42,
+      "repeats": 5,
+      "warmup": 2,
+      "runtime_sec": 0.8671,
+      "throughput_ops_sec": 230667,
+      "throughput_min_ops_sec": 166014,
+      "throughput_max_ops_sec": 250505,
+      "throughput_spread_pct": 36.63,
+      "throughput_per_pass": [
+        230667,
+        250505,
+        245063,
+        211155,
+        166014
+      ],
+      "operations": {
+        "total": 200000,
+        "submits": 100176,
+        "market_orders": 0,
+        "orders_rested": 100176,
+        "cancel_attempts": 99824,
+        "cancel_hits": 99824,
+        "cancel_hit_rate_pct": 100.0
+      },
+      "market": {
+        "trades": 0,
+        "volume": 0,
+        "notional": 0.0
+      },
+      "latency": {
+        "submit": {
+          "count": 500880,
+          "total_ms": 1487.723,
+          "mean_us": 2.97,
+          "min_us": 1.833,
+          "max_us": 2432.333,
+          "p50_us": 2.542,
+          "p95_us": 3.833,
+          "p99_us": 9.958,
+          "p99_9_us": 58.167
+        },
+        "cancel": {
+          "count": 499120,
+          "total_ms": 783.234,
+          "mean_us": 1.569,
+          "min_us": 0.791,
+          "max_us": 5537.084,
+          "p50_us": 1.416,
+          "p95_us": 1.916,
+          "p99_us": 4.625,
+          "p99_9_us": 36.916
+        }
+      },
+      "final_book": {
+        "resting_orders": 352,
+        "bid_levels": 66,
+        "ask_levels": 72,
+        "bid_depth": 1538,
+        "ask_depth": 2140,
+        "best_bid": 99.98,
+        "best_ask": 100.02,
+        "spread": 0.04
+      },
+      "level_churn": {
+        "levels_created": 61098,
+        "levels_removed": 60960
+      },
+      "slow_ops": [
+        {
+          "op_index": 1377,
+          "kind": "submit",
+          "elapsed_us": 549.667,
+          "resting_orders": 20,
+          "bid_levels": 14,
+          "ask_levels": 5,
+          "bid_depth": 153,
+          "ask_depth": 69,
+          "best_bid": 99.98,
+          "best_ask": 100.18,
+          "spread": 0.2
+        },
+        {
+          "op_index": 4702,
+          "kind": "submit",
+          "elapsed_us": 605.375,
+          "resting_orders": 9,
+          "bid_levels": 5,
+          "ask_levels": 4,
+          "bid_depth": 30,
+          "ask_depth": 38,
+          "best_bid": 99.98,
+          "best_ask": 100.2,
+          "spread": 0.22
+        },
+        {
+          "op_index": 5400,
+          "kind": "submit",
+          "elapsed_us": 564.458,
+          "resting_orders": 17,
+          "bid_levels": 7,
+          "ask_levels": 9,
+          "bid_depth": 93,
+          "ask_depth": 137,
+          "best_bid": 99.96,
+          "best_ask": 100.02,
+          "spread": 0.06
+        },
+        {
+          "op_index": 10114,
+          "kind": "cancel",
+          "elapsed_us": 1531.75,
+          "resting_orders": 23,
+          "bid_levels": 11,
+          "ask_levels": 9,
+          "bid_depth": 134,
+          "ask_depth": 91,
+          "best_bid": 99.9,
+          "best_ask": 100.26,
+          "spread": 0.36
+        },
+        {
+          "op_index": 23104,
+          "kind": "submit",
+          "elapsed_us": 783.708,
+          "resting_orders": 59,
+          "bid_levels": 27,
+          "ask_levels": 24,
+          "bid_depth": 273,
+          "ask_depth": 249,
+          "best_bid": 99.95,
+          "best_ask": 100.01,
+          "spread": 0.06
+        },
+        {
+          "op_index": 50971,
+          "kind": "submit",
+          "elapsed_us": 527.375,
+          "resting_orders": 8,
+          "bid_levels": 3,
+          "ask_levels": 4,
+          "bid_depth": 56,
+          "ask_depth": 49,
+          "best_bid": 99.98,
+          "best_ask": 100.34,
+          "spread": 0.36
+        }
+      ],
+      "slow_threshold_us": 500.0,
+      "gc_disabled": false
+    },
+    {
+      "workload": "deep_book",
+      "description": "Passive-only flow spread across a wide price grid.",
+      "ops_requested": 200000,
+      "seed": 42,
+      "repeats": 5,
+      "warmup": 2,
+      "runtime_sec": 1.3579,
+      "throughput_ops_sec": 147281,
+      "throughput_min_ops_sec": 110766,
+      "throughput_max_ops_sec": 168092,
+      "throughput_spread_pct": 38.92,
+      "throughput_per_pass": [
+        110766,
+        136664,
+        158824,
+        147281,
+        168092
+      ],
+      "operations": {
+        "total": 200000,
+        "submits": 200000,
+        "market_orders": 0,
+        "orders_rested": 200000,
+        "cancel_attempts": 0,
+        "cancel_hits": 0,
+        "cancel_hit_rate_pct": null
+      },
+      "market": {
+        "trades": 0,
+        "volume": 0,
+        "notional": 0.0
+      },
+      "latency": {
+        "submit": {
+          "count": 1000000,
+          "total_ms": 3069.396,
+          "mean_us": 3.069,
+          "min_us": 1.958,
+          "max_us": 37703.75,
+          "p50_us": 2.333,
+          "p95_us": 3.542,
+          "p99_us": 12.084,
+          "p99_9_us": 68.167
+        },
+        "cancel": {
+          "count": 0
+        }
+      },
+      "final_book": {
+        "resting_orders": 200000,
+        "bid_levels": 2496,
+        "ask_levels": 2496,
+        "bid_depth": 552317,
+        "ask_depth": 549356,
+        "best_bid": 99.95,
+        "best_ask": 100.05,
+        "spread": 0.1
+      },
+      "level_churn": {
+        "levels_created": 4992,
+        "levels_removed": 0
+      },
+      "slow_ops": [
+        {
+          "op_index": 18547,
+          "kind": "submit",
+          "elapsed_us": 814.208,
+          "resting_orders": 18548,
+          "bid_levels": 2446,
+          "ask_levels": 2437,
+          "bid_depth": 52157,
+          "ask_depth": 50343,
+          "best_bid": 99.95,
+          "best_ask": 100.05,
+          "spread": 0.1
+        },
+        {
+          "op_index": 22719,
+          "kind": "submit",
+          "elapsed_us": 588.208,
+          "resting_orders": 22720,
+          "bid_levels": 2468,
+          "ask_levels": 2468,
+          "bid_depth": 63563,
+          "ask_depth": 61885,
+          "best_bid": 99.95,
+          "best_ask": 100.05,
+          "spread": 0.1
+        },
+        {
+          "op_index": 31470,
+          "kind": "submit",
+          "elapsed_us": 1608.5,
+          "resting_orders": 31471,
+          "bid_levels": 2491,
+          "ask_levels": 2492,
+          "bid_depth": 87452,
+          "ask_depth": 86609,
+          "best_bid": 99.95,
+          "best_ask": 100.05,
+          "spread": 0.1
+        },
+        {
+          "op_index": 39490,
+          "kind": "submit",
+          "elapsed_us": 584.792,
+          "resting_orders": 39491,
+          "bid_levels": 2494,
+          "ask_levels": 2496,
+          "bid_depth": 109807,
+          "ask_depth": 108530,
+          "best_bid": 99.95,
+          "best_ask": 100.05,
+          "spread": 0.1
+        },
+        {
+          "op_index": 42723,
+          "kind": "submit",
+          "elapsed_us": 538.959,
+          "resting_orders": 42724,
+          "bid_levels": 2496,
+          "ask_levels": 2496,
+          "bid_depth": 118718,
+          "ask_depth": 117181,
+          "best_bid": 99.95,
+          "best_ask": 100.05,
+          "spread": 0.1
+        },
+        {
+          "op_index": 43687,
+          "kind": "submit",
+          "elapsed_us": 729.5,
+          "resting_orders": 43688,
+          "bid_levels": 2496,
+          "ask_levels": 2496,
+          "bid_depth": 121374,
+          "ask_depth": 119967,
+          "best_bid": 99.95,
+          "best_ask": 100.05,
+          "spread": 0.1
+        },
+        {
+          "op_index": 44036,
+          "kind": "submit",
+          "elapsed_us": 12022.625,
+          "resting_orders": 44037,
+          "bid_levels": 2496,
+          "ask_levels": 2496,
+          "bid_depth": 122323,
+          "ask_depth": 120990,
+          "best_bid": 99.95,
+          "best_ask": 100.05,
+          "spread": 0.1
+        },
+        {
+          "op_index": 54748,
+          "kind": "submit",
+          "elapsed_us": 527.5,
+          "resting_orders": 54749,
+          "bid_levels": 2496,
+          "ask_levels": 2496,
+          "bid_depth": 150994,
+          "ask_depth": 151087,
+          "best_bid": 99.95,
+          "best_ask": 100.05,
+          "spread": 0.1
+        },
+        {
+          "op_index": 56613,
+          "kind": "submit",
+          "elapsed_us": 1243.959,
+          "resting_orders": 56614,
+          "bid_levels": 2496,
+          "ask_levels": 2496,
+          "bid_depth": 156125,
+          "ask_depth": 156112,
+          "best_bid": 99.95,
+          "best_ask": 100.05,
+          "spread": 0.1
+        },
+        {
+          "op_index": 56835,
+          "kind": "submit",
+          "elapsed_us": 819.75,
+          "resting_orders": 56836,
+          "bid_levels": 2496,
+          "ask_levels": 2496,
+          "bid_depth": 156784,
+          "ask_depth": 156667,
+          "best_bid": 99.95,
+          "best_ask": 100.05,
+          "spread": 0.1
+        },
+        {
+          "op_index": 57287,
+          "kind": "submit",
+          "elapsed_us": 826.375,
+          "resting_orders": 57288,
+          "bid_levels": 2496,
+          "ask_levels": 2496,
+          "bid_depth": 158028,
+          "ask_depth": 157984,
+          "best_bid": 99.95,
+          "best_ask": 100.05,
+          "spread": 0.1
+        },
+        {
+          "op_index": 57408,
+          "kind": "submit",
+          "elapsed_us": 1028.708,
+          "resting_orders": 57409,
+          "bid_levels": 2496,
+          "ask_levels": 2496,
+          "bid_depth": 158387,
+          "ask_depth": 158311,
+          "best_bid": 99.95,
+          "best_ask": 100.05,
+          "spread": 0.1
+        },
+        {
+          "op_index": 58367,
+          "kind": "submit",
+          "elapsed_us": 871.291,
+          "resting_orders": 58368,
+          "bid_levels": 2496,
+          "ask_levels": 2496,
+          "bid_depth": 160848,
+          "ask_depth": 161012,
+          "best_bid": 99.95,
+          "best_ask": 100.05,
+          "spread": 0.1
+        },
+        {
+          "op_index": 58652,
+          "kind": "submit",
+          "elapsed_us": 683.917,
+          "resting_orders": 58653,
+          "bid_levels": 2496,
+          "ask_levels": 2496,
+          "bid_depth": 161670,
+          "ask_depth": 161721,
+          "best_bid": 99.95,
+          "best_ask": 100.05,
+          "spread": 0.1
+        },
+        {
+          "op_index": 74899,
+          "kind": "submit",
+          "elapsed_us": 1139.125,
+          "resting_orders": 74900,
+          "bid_levels": 2496,
+          "ask_levels": 2496,
+          "bid_depth": 206792,
+          "ask_depth": 206170,
+          "best_bid": 99.95,
+          "best_ask": 100.05,
+          "spread": 0.1
+        },
+        {
+          "op_index": 75308,
+          "kind": "submit",
+          "elapsed_us": 626.958,
+          "resting_orders": 75309,
+          "bid_levels": 2496,
+          "ask_levels": 2496,
+          "bid_depth": 207842,
+          "ask_depth": 207299,
+          "best_bid": 99.95,
+          "best_ask": 100.05,
+          "spread": 0.1
+        },
+        {
+          "op_index": 85681,
+          "kind": "submit",
+          "elapsed_us": 737.208,
+          "resting_orders": 85682,
+          "bid_levels": 2496,
+          "ask_levels": 2496,
+          "bid_depth": 236179,
+          "ask_depth": 235590,
+          "best_bid": 99.95,
+          "best_ask": 100.05,
+          "spread": 0.1
+        },
+        {
+          "op_index": 87381,
+          "kind": "submit",
+          "elapsed_us": 1925.125,
+          "resting_orders": 87382,
+          "bid_levels": 2496,
+          "ask_levels": 2496,
+          "bid_depth": 241028,
+          "ask_depth": 240110,
+          "best_bid": 99.95,
+          "best_ask": 100.05,
+          "spread": 0.1
+        },
+        {
+          "op_index": 99752,
+          "kind": "submit",
+          "elapsed_us": 907.041,
+          "resting_orders": 99753,
+          "bid_levels": 2496,
+          "ask_levels": 2496,
+          "bid_depth": 274626,
+          "ask_depth": 274349,
+          "best_bid": 99.95,
+          "best_ask": 100.05,
+          "spread": 0.1
+        },
+        {
+          "op_index": 121486,
+          "kind": "submit",
+          "elapsed_us": 852.25,
+          "resting_orders": 121487,
+          "bid_levels": 2496,
+          "ask_levels": 2496,
+          "bid_depth": 335151,
+          "ask_depth": 333951,
+          "best_bid": 99.95,
+          "best_ask": 100.05,
+          "spread": 0.1
+        },
+        {
+          "op_index": 121523,
+          "kind": "submit",
+          "elapsed_us": 710.791,
+          "resting_orders": 121524,
+          "bid_levels": 2496,
+          "ask_levels": 2496,
+          "bid_depth": 335271,
+          "ask_depth": 334051,
+          "best_bid": 99.95,
+          "best_ask": 100.05,
+          "spread": 0.1
+        },
+        {
+          "op_index": 141312,
+          "kind": "submit",
+          "elapsed_us": 1359.791,
+          "resting_orders": 141313,
+          "bid_levels": 2496,
+          "ask_levels": 2496,
+          "bid_depth": 390108,
+          "ask_depth": 388264,
+          "best_bid": 99.95,
+          "best_ask": 100.05,
+          "spread": 0.1
+        },
+        {
+          "op_index": 174762,
+          "kind": "submit",
+          "elapsed_us": 1348.0,
+          "resting_orders": 174763,
+          "bid_levels": 2496,
+          "ask_levels": 2496,
+          "bid_depth": 482149,
+          "ask_depth": 480165,
+          "best_bid": 99.95,
+          "best_ask": 100.05,
+          "spread": 0.1
+        },
+        {
+          "op_index": 179528,
+          "kind": "submit",
+          "elapsed_us": 1308.792,
+          "resting_orders": 179529,
+          "bid_levels": 2496,
+          "ask_levels": 2496,
+          "bid_depth": 495090,
+          "ask_depth": 493222,
+          "best_bid": 99.95,
+          "best_ask": 100.05,
+          "spread": 0.1
+        },
+        {
+          "op_index": 185666,
+          "kind": "submit",
+          "elapsed_us": 914.75,
+          "resting_orders": 185667,
+          "bid_levels": 2496,
+          "ask_levels": 2496,
+          "bid_depth": 512327,
+          "ask_depth": 510030,
+          "best_bid": 99.95,
+          "best_ask": 100.05,
+          "spread": 0.1
+        }
+      ],
+      "slow_threshold_us": 500.0,
+      "gc_disabled": false
+    },
+    {
+      "workload": "aggressive",
+      "description": "Marketable flow that mostly trades on arrival.",
+      "ops_requested": 200000,
+      "seed": 42,
+      "repeats": 5,
+      "warmup": 2,
+      "runtime_sec": 1.4799,
+      "throughput_ops_sec": 135146,
+      "throughput_min_ops_sec": 122658,
+      "throughput_max_ops_sec": 139045,
+      "throughput_spread_pct": 12.13,
+      "throughput_per_pass": [
+        130626,
+        135146,
+        135530,
+        122658,
+        139045
+      ],
+      "operations": {
+        "total": 200000,
+        "submits": 200000,
+        "market_orders": 30180,
+        "orders_rested": 112681,
+        "cancel_attempts": 0,
+        "cancel_hits": 0,
+        "cancel_hit_rate_pct": null
+      },
+      "market": {
+        "trades": 178806,
+        "volume": 3426279,
+        "notional": 342523041.08
+      },
+      "latency": {
+        "submit": {
+          "count": 1000000,
+          "total_ms": 4226.036,
+          "mean_us": 4.226,
+          "min_us": 0.833,
+          "max_us": 10665.625,
+          "p50_us": 2.708,
+          "p95_us": 10.125,
+          "p99_us": 22.083,
+          "p99_9_us": 73.958
+        },
+        "cancel": {
+          "count": 0
+        }
+      },
+      "final_book": {
+        "resting_orders": 18675,
+        "bid_levels": 74,
+        "ask_levels": 54,
+        "bid_depth": 285891,
+        "ask_depth": 316650,
+        "best_bid": 99.91,
+        "best_ask": 100.05,
+        "spread": 0.14
+      },
+      "level_churn": {
+        "levels_created": 81740,
+        "levels_removed": 81612
+      },
+      "slow_ops": [
+        {
+          "op_index": 34465,
+          "kind": "submit",
+          "elapsed_us": 994.541,
+          "resting_orders": 3214,
+          "bid_levels": 77,
+          "ask_levels": 51,
+          "bid_depth": 46715,
+          "ask_depth": 57904,
+          "best_bid": 99.52,
+          "best_ask": 99.69,
+          "spread": 0.17
+        },
+        {
+          "op_index": 34479,
+          "kind": "submit",
+          "elapsed_us": 640.375,
+          "resting_orders": 3217,
+          "bid_levels": 79,
+          "ask_levels": 49,
+          "bid_depth": 46827,
+          "ask_depth": 58011,
+          "best_bid": 99.94,
+          "best_ask": 99.95,
+          "spread": 0.01
+        },
+        {
+          "op_index": 34480,
+          "kind": "submit",
+          "elapsed_us": 688.125,
+          "resting_orders": 3216,
+          "bid_levels": 78,
+          "ask_levels": 49,
+          "bid_depth": 46811,
+          "ask_depth": 58011,
+          "best_bid": 99.82,
+          "best_ask": 99.95,
+          "spread": 0.13
+        },
+        {
+          "op_index": 34548,
+          "kind": "submit",
+          "elapsed_us": 914.583,
+          "resting_orders": 3228,
+          "bid_levels": 75,
+          "ask_levels": 52,
+          "bid_depth": 46918,
+          "ask_depth": 58189,
+          "best_bid": 100.31,
+          "best_ask": 100.76,
+          "spread": 0.45
+        },
+        {
+          "op_index": 34610,
+          "kind": "submit",
+          "elapsed_us": 2554.541,
+          "resting_orders": 3210,
+          "bid_levels": 68,
+          "ask_levels": 42,
+          "bid_depth": 46652,
+          "ask_depth": 57912,
+          "best_bid": 101.02,
+          "best_ask": 101.09,
+          "spread": 0.07
+        },
+        {
+          "op_index": 34754,
+          "kind": "submit",
+          "elapsed_us": 2204.792,
+          "resting_orders": 3233,
+          "bid_levels": 65,
+          "ask_levels": 48,
+          "bid_depth": 47113,
+          "ask_depth": 58276,
+          "best_bid": 99.2,
+          "best_ask": 99.3,
+          "spread": 0.1
+        },
+        {
+          "op_index": 34760,
+          "kind": "submit",
+          "elapsed_us": 766.0,
+          "resting_orders": 3227,
+          "bid_levels": 66,
+          "ask_levels": 42,
+          "bid_depth": 47152,
+          "ask_depth": 58090,
+          "best_bid": 99.21,
+          "best_ask": 101.09,
+          "spread": 1.88
+        },
+        {
+          "op_index": 44941,
+          "kind": "submit",
+          "elapsed_us": 526.208,
+          "resting_orders": 4133,
+          "bid_levels": 61,
+          "ask_levels": 41,
+          "bid_depth": 62683,
+          "ask_depth": 71421,
+          "best_bid": 99.25,
+          "best_ask": 100.43,
+          "spread": 1.18
+        },
+        {
+          "op_index": 86630,
+          "kind": "submit",
+          "elapsed_us": 682.709,
+          "resting_orders": 7989,
+          "bid_levels": 62,
+          "ask_levels": 62,
+          "bid_depth": 125167,
+          "ask_depth": 132852,
+          "best_bid": 100.37,
+          "best_ask": 100.42,
+          "spread": 0.05
+        },
+        {
+          "op_index": 130695,
+          "kind": "submit",
+          "elapsed_us": 1647.459,
+          "resting_orders": 12044,
+          "bid_levels": 47,
+          "ask_levels": 61,
+          "bid_depth": 180153,
+          "ask_depth": 209631,
+          "best_bid": 100.75,
+          "best_ask": 100.83,
+          "spread": 0.08
+        },
+        {
+          "op_index": 170764,
+          "kind": "submit",
+          "elapsed_us": 612.833,
+          "resting_orders": 16074,
+          "bid_levels": 77,
+          "ask_levels": 60,
+          "bid_depth": 244223,
+          "ask_depth": 274173,
+          "best_bid": 100.3,
+          "best_ask": 100.51,
+          "spread": 0.21
+        }
+      ],
+      "slow_threshold_us": 500.0,
+      "gc_disabled": false
+    },
+    {
+      "workload": "hot_price",
+      "description": "Almost everything at one price, with alternating build and drain phases.",
+      "ops_requested": 200000,
+      "seed": 42,
+      "repeats": 5,
+      "warmup": 2,
+      "runtime_sec": 1.1552,
+      "throughput_ops_sec": 173131,
+      "throughput_min_ops_sec": 163126,
+      "throughput_max_ops_sec": 181757,
+      "throughput_spread_pct": 10.76,
+      "throughput_per_pass": [
+        173131,
+        163126,
+        169920,
+        180738,
+        181757
+      ],
+      "operations": {
+        "total": 200000,
+        "submits": 169887,
+        "market_orders": 0,
+        "orders_rested": 88264,
+        "cancel_attempts": 30113,
+        "cancel_hits": 4175,
+        "cancel_hit_rate_pct": 13.86
+      },
+      "market": {
+        "trades": 152858,
+        "volume": 651207,
+        "notional": 65120710.48
+      },
+      "latency": {
+        "submit": {
+          "count": 849435,
+          "total_ms": 2829.233,
+          "mean_us": 3.331,
+          "min_us": 1.666,
+          "max_us": 8798.125,
+          "p50_us": 2.333,
+          "p95_us": 6.5,
+          "p99_us": 9.416,
+          "p99_9_us": 41.709
+        },
+        "cancel": {
+          "count": 150565,
+          "total_ms": 60.024,
+          "mean_us": 0.399,
+          "min_us": 0.166,
+          "max_us": 210.959,
+          "p50_us": 0.25,
+          "p95_us": 1.084,
+          "p99_us": 1.375,
+          "p99_9_us": 3.792
+        }
+      },
+      "final_book": {
+        "resting_orders": 2713,
+        "bid_levels": 1,
+        "ask_levels": 2,
+        "bid_depth": 7193,
+        "ask_depth": 14494,
+        "best_bid": 99.99,
+        "best_ask": 100.0,
+        "spread": 0.01
+      },
+      "level_churn": {
+        "levels_created": 168,
+        "levels_removed": 165
+      },
+      "slow_ops": [],
+      "slow_threshold_us": 500.0,
+      "gc_disabled": false
+    }
+  ]
+}

@@ -1,2 +1,9 @@
+# The core engine (orderbook/), the benchmarks, and the analysis tools use
+# only the Python standard library. Nothing below is needed to run them.
+
+# Tests
+pytest>=7.0
+
+# Simulation layer only (sim/ — market makers, async session, WebSocket feed)
 fastapi>=0.110.0
 uvicorn[standard]>=0.27.0

@@ -36,7 +36,7 @@ function pickMetrics(data: Record<string, unknown>): MetricsState {
     orders_fully_filled: (data.orders_fully_filled as number) ?? 0,
     fill_rate_pct: (data.fill_rate_pct as number) ?? 0,
     average_spread: (data.average_spread as number | null) ?? null,
-    event_count: (data.event_count as number) ?? 0,
+    resting_orders: (data.resting_orders as number) ?? 0,
   };
 }
 

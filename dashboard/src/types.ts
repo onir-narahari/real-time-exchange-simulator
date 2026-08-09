@@ -29,7 +29,7 @@ export interface MetricsState {
   orders_fully_filled: number;
   fill_rate_pct: number;
   average_spread: number | null;
-  event_count: number;
+  resting_orders: number;
 }
 
 export interface Trade {
@@ -78,5 +78,5 @@ export const EMPTY_METRICS: MetricsState = {
   orders_fully_filled: 0,
   fill_rate_pct: 0,
   average_spread: null,
-  event_count: 0,
+  resting_orders: 0,
 };
