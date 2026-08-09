@@ -106,7 +106,10 @@ class MatchingEngine:
             if not order.crosses(level.price):
                 break
 
-            resting = level.peek()
+            # The head node is consumed directly — no id lookup, no
+            # re-validation: consume_level owns fill + unlink + collection.
+            node = level.head
+            resting = node.order
             quantity = min(order.remaining, resting.remaining)
 
             trades.append(
@@ -122,6 +125,6 @@ class MatchingEngine:
             self._next_trade_id += 1
 
             order.remaining -= quantity
-            book.fill(resting.order_id, quantity)
+            book.consume_level(level, node, quantity)
 
         return trades

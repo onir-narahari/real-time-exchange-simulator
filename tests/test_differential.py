@@ -103,14 +103,27 @@ def test_harness_detects_a_broken_engine(monkeypatch):
 
     Without this, a passing differential suite would prove nothing — it could
     equally mean the comparison never looks at anything.
-    """
-    from orderbook.price_level import PriceLevel
 
-    monkeypatch.setattr(
-        PriceLevel,
-        "peek",
-        lambda self: self.tail.order if self.tail is not None else None,
-    )
+    The bug is injected by making ``append`` prepend, reversing time priority
+    inside every level. That corrupts the data structure's semantics rather
+    than patching a read path, so the test survives refactors of how the
+    sweep walks a level (e.g. it no longer goes through ``peek``).
+    """
+    from orderbook.price_level import BookNode, PriceLevel
+
+    def lifo_append(self, order):
+        node = BookNode(order, self)
+        if self.head is None:
+            self.head = self.tail = node
+        else:
+            node.next = self.head
+            self.head.prev = node
+            self.head = node
+        self.total_quantity += order.remaining
+        self.order_count += 1
+        return node
+
+    monkeypatch.setattr(PriceLevel, "append", lifo_append)
 
     with pytest.raises(DifferentialMismatch):
         run_case(seed=0, ops=300, profile="tight")

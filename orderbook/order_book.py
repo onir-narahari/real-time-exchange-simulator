@@ -194,6 +194,69 @@ class OrderBook:
         order.status = OrderStatus.PARTIALLY_FILLED
         return order
 
+    def consume_level(self, level: PriceLevel, node: BookNode, quantity: int) -> Order:
+        """Apply ``quantity`` of execution to a known node in a known level.
+
+        This is the matching engine's hot path. The sweep already holds the
+        level (from :meth:`best_level`) and the node (its head), so unlike
+        :meth:`fill` this does no id lookup and no re-validation: the caller
+        guarantees ``0 < quantity <= node.order.remaining``. That collapses
+        what used to be ``fill -> _unlink -> level.remove -> is_empty ->
+        _remove_level`` — five nested calls re-deriving what the caller knew
+        — into one.
+
+        A fully consumed order is unlinked inline and its level collected if
+        it emptied; a partially consumed order stays at the head.
+        """
+        order = node.order
+        remaining = order.remaining
+
+        if quantity < remaining:
+            order.remaining = remaining - quantity
+            level.total_quantity -= quantity
+            if order.side is Side.BUY:
+                self.bid_depth -= quantity
+            else:
+                self.ask_depth -= quantity
+            order.status = OrderStatus.PARTIALLY_FILLED
+            return order
+
+        # Full fill: unlink the node inline, then collect the level if empty.
+        level.total_quantity -= quantity
+        level.order_count -= 1
+        prev, nxt = node.prev, node.next
+        if prev is not None:
+            prev.next = nxt
+        else:
+            level.head = nxt
+        if nxt is not None:
+            nxt.prev = prev
+        else:
+            level.tail = prev
+        node.prev = None
+        node.next = None
+        del self.orders_by_id[order.order_id]
+
+        if order.side is Side.BUY:
+            self.bid_depth -= quantity
+        else:
+            self.ask_depth -= quantity
+
+        order.remaining = 0
+        order.status = OrderStatus.FILLED
+
+        if level.head is None:
+            if level.side is Side.BUY:
+                levels, prices = self._bid_levels, self._bid_prices
+            else:
+                levels, prices = self._ask_levels, self._ask_prices
+            del levels[level.price]
+            idx = bisect.bisect_left(prices, level.price)
+            if idx < len(prices) and prices[idx] == level.price:
+                prices.pop(idx)
+            self.level_removes += 1
+        return order
+
     def contains(self, order_id: int) -> bool:
         return order_id in self.orders_by_id
 
