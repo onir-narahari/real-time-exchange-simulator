@@ -1,0 +1,72 @@
+{
+  "kind": "baseline_cpp",
+  "config": {"ops": 200000, "seed": 42, "repeats": 5, "warmup": 2, "gc_disabled": false, "note": "no collector in C++"},
+  "environment": {"language": "c++17", "compiler": "clang 17.0.0 (clang-1700.0.13.3)", "machine": "arm64", "recorded_at": "2026-08-09T20:27:05-0500"},
+  "runs": [
+    {
+      "workload": "balanced",
+      "throughput_ops_sec": 9246755, "throughput_spread_pct": 14.12,
+      "throughput_per_pass": [8785963, 9246755, 9582330, 9204942, 10091985],
+      "operations": {"total": 200000, "submits": 200000, "market_orders": 0, "orders_rested": 186004, "cancel_attempts": 0, "cancel_hits": 0},
+      "market": {"trades": 28529, "volume": 300158, "notional": 30015688.62},
+      "latency": {
+        "submit": {"count": 1000000, "mean_us": 0.083, "min_us": 0.000, "max_us": 1121.041, "p50_us": 0.042, "p95_us": 0.125, "p99_us": 0.416, "p99_9_us": 1.125},
+        "cancel": {"count": 0, "mean_us": 0.000, "min_us": 0.000, "max_us": 0.000, "p50_us": 0.000, "p95_us": 0.000, "p99_us": 0.000, "p99_9_us": 0.000}
+      },
+      "final_book": {"resting_orders": 170745, "bid_levels": 96, "ask_levels": 96, "bid_depth": 1759083, "ask_depth": 1747454, "best_bid": 99.95, "best_ask": 100.05},
+      "level_churn": {"levels_created": 9261, "levels_removed": 9069}
+    },
+    {
+      "workload": "cancel_heavy",
+      "throughput_ops_sec": 9762586, "throughput_spread_pct": 21.76,
+      "throughput_per_pass": [9775011, 7682692, 9762586, 9806866, 9725183],
+      "operations": {"total": 200000, "submits": 100176, "market_orders": 0, "orders_rested": 100176, "cancel_attempts": 99824, "cancel_hits": 99824},
+      "market": {"trades": 0, "volume": 0, "notional": 0.00},
+      "latency": {
+        "submit": {"count": 500880, "mean_us": 0.089, "min_us": 0.000, "max_us": 35.416, "p50_us": 0.083, "p95_us": 0.125, "p99_us": 0.167, "p99_9_us": 0.375},
+        "cancel": {"count": 499120, "mean_us": 0.082, "min_us": 0.000, "max_us": 87.458, "p50_us": 0.083, "p95_us": 0.125, "p99_us": 0.167, "p99_9_us": 0.458}
+      },
+      "final_book": {"resting_orders": 352, "bid_levels": 66, "ask_levels": 72, "bid_depth": 1538, "ask_depth": 2140, "best_bid": 99.98, "best_ask": 100.02},
+      "level_churn": {"levels_created": 61098, "levels_removed": 60960}
+    },
+    {
+      "workload": "deep_book",
+      "throughput_ops_sec": 4087569, "throughput_spread_pct": 144.52,
+      "throughput_per_pass": [7128356, 2065941, 4087569, 3658210, 7973223],
+      "operations": {"total": 200000, "submits": 200000, "market_orders": 0, "orders_rested": 200000, "cancel_attempts": 0, "cancel_hits": 0},
+      "market": {"trades": 0, "volume": 0, "notional": 0.00},
+      "latency": {
+        "submit": {"count": 1000000, "mean_us": 0.226, "min_us": 0.000, "max_us": 7894.250, "p50_us": 0.084, "p95_us": 0.375, "p99_us": 0.833, "p99_9_us": 6.750},
+        "cancel": {"count": 0, "mean_us": 0.000, "min_us": 0.000, "max_us": 0.000, "p50_us": 0.000, "p95_us": 0.000, "p99_us": 0.000, "p99_9_us": 0.000}
+      },
+      "final_book": {"resting_orders": 200000, "bid_levels": 2496, "ask_levels": 2496, "bid_depth": 552317, "ask_depth": 549356, "best_bid": 99.95, "best_ask": 100.05},
+      "level_churn": {"levels_created": 4992, "levels_removed": 0}
+    },
+    {
+      "workload": "aggressive",
+      "throughput_ops_sec": 5301108, "throughput_spread_pct": 23.29,
+      "throughput_per_pass": [5769688, 4535319, 5435189, 4783530, 5301108],
+      "operations": {"total": 200000, "submits": 200000, "market_orders": 30180, "orders_rested": 112681, "cancel_attempts": 0, "cancel_hits": 0},
+      "market": {"trades": 178806, "volume": 3426279, "notional": 342523041.08},
+      "latency": {
+        "submit": {"count": 1000000, "mean_us": 0.164, "min_us": 0.000, "max_us": 437.375, "p50_us": 0.125, "p95_us": 0.458, "p99_us": 1.000, "p99_9_us": 1.750},
+        "cancel": {"count": 0, "mean_us": 0.000, "min_us": 0.000, "max_us": 0.000, "p50_us": 0.000, "p95_us": 0.000, "p99_us": 0.000, "p99_9_us": 0.000}
+      },
+      "final_book": {"resting_orders": 18675, "bid_levels": 74, "ask_levels": 54, "bid_depth": 285891, "ask_depth": 316650, "best_bid": 99.91, "best_ask": 100.05},
+      "level_churn": {"levels_created": 81740, "levels_removed": 81612}
+    },
+    {
+      "workload": "hot_price",
+      "throughput_ops_sec": 5885007, "throughput_spread_pct": 97.68,
+      "throughput_per_pass": [7859473, 5885007, 2229620, 2751263, 7977875],
+      "operations": {"total": 200000, "submits": 169887, "market_orders": 0, "orders_rested": 88264, "cancel_attempts": 30113, "cancel_hits": 4175},
+      "market": {"trades": 152858, "volume": 651207, "notional": 65120710.48},
+      "latency": {
+        "submit": {"count": 849435, "mean_us": 0.206, "min_us": 0.000, "max_us": 3640.000, "p50_us": 0.083, "p95_us": 0.334, "p99_us": 0.667, "p99_9_us": 18.750},
+        "cancel": {"count": 150565, "mean_us": 0.111, "min_us": 0.000, "max_us": 1518.208, "p50_us": 0.042, "p95_us": 0.167, "p99_us": 0.417, "p99_9_us": 8.208}
+      },
+      "final_book": {"resting_orders": 2713, "bid_levels": 1, "ask_levels": 2, "bid_depth": 7193, "ask_depth": 14494, "best_bid": 99.99, "best_ask": 100.00},
+      "level_churn": {"levels_created": 168, "levels_removed": 165}
+    }
+  ]
+}

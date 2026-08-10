@@ -16,6 +16,7 @@ venv/
 node_modules/
 dist/
 build/
+build-*/
 .vite/
 tmp/
 scratch/
@@ -24,3 +25,5 @@ scratch/
 results/scratch/
 benchmark_*.csv
 benchmark_*.json
+vectors/
+ops/
